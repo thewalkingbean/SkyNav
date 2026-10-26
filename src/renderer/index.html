@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en"><head><meta charset="UTF-8"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https: data:; style-src 'self'; script-src 'self'; connect-src 'none'"><meta name="viewport" content="width=device-width, initial-scale=1"><title>SkyNav - Internet Browser</title><link rel="stylesheet" href="style.css"></head>
+<body>
+  <svg class="icon-defs" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs>
+      <linearGradient id="icon-blue" x2="0" y2="1"><stop stop-color="#f7ffff"/><stop offset=".42" stop-color="#63bcff"/><stop offset="1" stop-color="#0754c9"/></linearGradient>
+      <linearGradient id="icon-gold" x2="0" y2="1"><stop stop-color="#fff9c3"/><stop offset=".48" stop-color="#ffc84e"/><stop offset="1" stop-color="#e18b05"/></linearGradient>
+      <linearGradient id="icon-green" x2="0" y2="1"><stop stop-color="#b9ffad"/><stop offset=".48" stop-color="#30c52b"/><stop offset="1" stop-color="#067b16"/></linearGradient>
+      <symbol id="i-back" viewBox="0 0 32 32"><path d="M17 5 5 16l12 11v-7h10v-8H17z" fill="white" stroke="#d8f5d9" stroke-width="1.5"/></symbol>
+      <symbol id="i-forward" viewBox="0 0 32 32"><path d="m15 5 12 11-12 11v-7H5v-8h10z" fill="white" stroke="#e5e5e5" stroke-width="1.5"/></symbol>
+      <symbol id="i-stop" viewBox="0 0 32 32"><path d="M10 3h12l7 7v12l-7 7H10l-7-7V10z" fill="#be180e" stroke="#7d0e0b" stroke-width="1.4"/><path d="M11 5h10l6 6v10l-6 6H11l-6-6V11z" fill="#f24330" stroke="#ffd2b7" stroke-width="1"/><path d="m11 11 10 10m0-10L11 21" stroke="white" stroke-width="3.5" stroke-linecap="round"/></symbol>
+      <symbol id="i-refresh" viewBox="0 0 32 32"><path d="M25 11a11 11 0 1 0 1 9" fill="none" stroke="#003d9b" stroke-width="5" stroke-linecap="round"/><path d="M25 11a11 11 0 1 0 1 9" fill="none" stroke="#2585e4" stroke-width="2.5" stroke-linecap="round"/><path d="M19 4h10v10z" fill="url(#icon-blue)" stroke="#003d9b" stroke-width="1.5" stroke-linejoin="round"/></symbol>
+      <symbol id="i-home" viewBox="0 0 32 32"><path d="M4 14 16 3l12 11v15H4z" fill="url(#icon-blue)" stroke="#003a9c" stroke-width="1.5"/><path d="m2 15 14-12 14 12" fill="none" stroke="#f6950b" stroke-width="4" stroke-linejoin="round"/><path d="M13 20h6v9h-6z" fill="#fff" stroke="#0754bd"/></symbol>
+      <symbol id="i-star" viewBox="0 0 32 32"><path d="m16 2 4.2 9 9.8 1.3-7.2 7 1.9 10L16 24.5l-8.7 4.8 1.9-10-7.2-7L11.8 11z" fill="url(#icon-gold)" stroke="#a96900" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+      <symbol id="i-mail" viewBox="0 0 32 32"><path d="M3 9h26v19H3z" fill="url(#icon-blue)" stroke="#003f9d" stroke-width="1.6"/><path d="M4 10 16 20 28 10" fill="#fff" stroke="#0757bb" stroke-width="1.5" stroke-linejoin="round"/><path d="M4 27 13 18m15 9-9-9" fill="none" stroke="#d8f0ff" stroke-width="2"/><path d="M4 10h24" stroke="#fff" stroke-width="1.3"/></symbol>
+      <symbol id="i-print" viewBox="0 0 32 32"><path d="M8 2h16v11H8z" fill="#fff" stroke="#064aab" stroke-width="1.5"/><path d="M5 11h22l3 4v10H2V15z" fill="url(#icon-blue)" stroke="#00398e" stroke-width="1.6"/><path d="M5 12h22" stroke="#e9f8ff" stroke-width="1.5"/><path d="M8 21h16v9H8z" fill="#fff" stroke="#064aab" stroke-width="1.5"/><path d="M11 25h10m-10 3h8" stroke="#7d8b9d" stroke-width="1"/><circle cx="25.5" cy="16.5" r="1.5" fill="#20bd42"/></symbol>
+      <symbol id="i-search" viewBox="0 0 32 32"><circle cx="13" cy="13" r="9" fill="none" stroke="#617080" stroke-width="4"/><path d="m20 20 9 9" stroke="#617080" stroke-width="5" stroke-linecap="round"/></symbol>
+      <symbol id="i-folder" viewBox="0 0 32 32"><path d="M2 7h11l3 4h14v17H2z" fill="url(#icon-gold)" stroke="#a86a00" stroke-width="1.5"/><path d="M3 13h26" stroke="#fff4b5" stroke-width="2"/></symbol>
+      <symbol id="i-globe" viewBox="0 0 32 32"><circle cx="16" cy="16" r="13" fill="url(#icon-blue)" stroke="#074398" stroke-width="1.6"/><path d="M5 14c4-3 4-8 9-8l2 4 5 1-3 4-5-2-2 5-5-1m11 3 6-2 4 2-2 5-5 3-2-4z" fill="#70c92b" stroke="#288c27" stroke-width=".7"/></symbol>
+      <symbol id="i-computer" viewBox="0 0 32 32"><rect x="3" y="3" width="26" height="20" rx="2" fill="url(#icon-blue)" stroke="#00449f" stroke-width="2"/><path d="M13 23v5H7m12-5v5h6M6 29h20" fill="none" stroke="#626262" stroke-width="2"/></symbol>
+      <symbol id="i-help" viewBox="0 0 32 32"><circle cx="16" cy="16" r="13" fill="url(#icon-blue)" stroke="#06459d" stroke-width="2"/><path d="M11 12a5 5 0 1 1 8 4c-2 1-3 2-3 4" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"/><circle cx="16" cy="25" r="1.8" fill="white"/></symbol>
+      <symbol id="i-keyboard" viewBox="0 0 32 32"><rect x="2" y="7" width="28" height="18" rx="2" fill="url(#icon-blue)" stroke="#06459d" stroke-width="1.5"/><path d="M5 12h22M5 16h22M5 20h22" stroke="white" stroke-width="2"/><path d="M9 22h14" stroke="#06459d" stroke-width="2"/></symbol>
+      <symbol id="i-go" viewBox="0 0 32 32"><path d="M4 16h17m-7-9 9 9-9 9" fill="none" stroke="white" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-window-min" viewBox="0 0 20 20"><path d="M4 14h12" stroke="white" stroke-width="2.5"/></symbol>
+      <symbol id="i-window-max" viewBox="0 0 20 20"><rect x="4" y="4" width="12" height="12" fill="none" stroke="white" stroke-width="2"/><path d="M4 7h12" stroke="white" stroke-width="2"/></symbol>
+      <symbol id="i-window-close" viewBox="0 0 20 20"><path d="m5 5 10 10M15 5 5 15" stroke="white" stroke-width="2.8" stroke-linecap="round"/></symbol>
+    </defs>
+  </svg>
+  <div id="chrome">
+    <header class="titlebar"><img src="../../assets/skynav-globe.png" alt=""><span>SkyNav - Internet Browser</span><div class="window-buttons"><button data-action="minimize" aria-label="Minimize"><svg><use href="#i-window-min"/></svg></button><button data-action="maximize" aria-label="Maximize or restore"><svg><use href="#i-window-max"/></svg></button><button data-action="close-window" class="close" aria-label="Close"><svg><use href="#i-window-close"/></svg></button></div></header>
+    <nav id="menubar" aria-label="Main menu"></nav>
+    <div id="toolbar" class="toolbar"><button class="nav-button" data-action="back"><span class="round green"><svg><use href="#i-back"/></svg></span>Back</button><button class="nav-button" data-action="forward"><span class="round gray"><svg><use href="#i-forward"/></svg></span>Forward</button><div class="separator"></div><button class="tool-button" data-action="stop"><svg class="tool-icon"><use href="#i-stop"/></svg>Stop</button><button class="tool-button" data-action="refresh"><svg class="tool-icon"><use href="#i-refresh"/></svg>Refresh</button><div class="separator"></div><button class="tool-button" data-action="home"><svg class="tool-icon"><use href="#i-home"/></svg>Home</button><button class="tool-button" data-action="favorites"><svg class="tool-icon"><use href="#i-star"/></svg>Favorites</button><button class="tool-button" data-action="mail"><svg class="tool-icon"><use href="#i-mail"/></svg>Mail</button><button class="tool-button" data-action="print"><svg class="tool-icon"><use href="#i-print"/></svg>Print</button></div>
+    <div id="addressbar"><label for="address">Address</label><div class="address-input"><img src="../../assets/skynav-globe.png" alt=""><input id="address" aria-label="Address" spellcheck="false" autocomplete="off"><button id="address-history" title="Recent addresses">▾</button></div><button class="go" data-action="go"><span><svg><use href="#i-go"/></svg></span> Go</button><div id="address-list" hidden></div></div>
+    <div id="tabs"></div>
+    <div id="progress"><div></div></div>
+  </div>
+  <main id="content"><div id="local-page"></div></main>
+  <footer id="status"><span><img src="../../assets/skynav-globe.png" alt=""> <span id="status-text">Done</span></span><span><svg class="status-icon"><use href="#i-globe"/></svg> Internet</span></footer>
+  <div id="menu" hidden></div>
+  <div id="dialog-layer" hidden></div>
+  <script src="../../dist/renderer/renderer.js"></script>
+</body></html>

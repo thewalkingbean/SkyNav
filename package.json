@@ -1,0 +1,25 @@
+{
+  "name": "skynav",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SkyNav Internet Browser",
+  "main": "dist/main/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.renderer.json",
+    "start": "npm run build && electron .",
+    "dev": "npm run start",
+    "pack:win": "npm run build && electron-builder --win nsis"
+  },
+  "devDependencies": {
+    "electron": "^45.0.0",
+    "electron-builder": "^26.0.0",
+    "typescript": "^7.0.2",
+    "@types/node": "^24.0.0"
+  },
+  "build": {
+    "appId": "com.skynav.browser",
+    "productName": "SkyNav",
+    "files": ["dist/**/*", "src/renderer/**/*", "assets/**/*", "package.json"],
+    "win": {"target": "nsis"}
+  }
+}
