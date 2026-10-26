@@ -11,15 +11,27 @@
     "pack:win": "npm run build && electron-builder --win nsis"
   },
   "devDependencies": {
+    "@types/node": "^24.0.0",
     "electron": "^45.0.0",
     "electron-builder": "^26.0.0",
-    "typescript": "^7.0.2",
-    "@types/node": "^24.0.0"
+    "typescript": "^7.0.2"
   },
   "build": {
     "appId": "com.skynav.browser",
     "productName": "SkyNav",
-    "files": ["dist/**/*", "src/renderer/**/*", "assets/**/*", "package.json"],
-    "win": {"target": "nsis"}
+    "directories": {"output": "release"},
+    "files": [
+      "dist/**/*",
+      "src/renderer/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/skynav.ico"
+    }
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.118.0"
   }
 }

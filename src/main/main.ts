@@ -1,20 +1,20 @@
-import { app, BrowserWindow, WebContentsView, ipcMain, dialog, session, shell, Menu, nativeImage } from 'electron';
+import { app, BrowserWindow, WebContentsView, ipcMain, dialog, session, Menu } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import type { AppState, Bookmark, SearchResult, Settings, TabInfo, Visit } from '../types';
+import type { AppState, SearchResult, Settings, TabInfo } from '../types';
+import { SkyNavBackend } from './backend';
 
 type BrowserTab = { info: TabInfo; view?: WebContentsView };
 const HOME = 'skynav://home';
-const internal = new Set(['home','search','favorites','history','downloads','mail','print','help','options']);
+const internal = new Set(['home','search','favorites','history','downloads','mail','print','help','options','account']);
 let win: BrowserWindow;
 let tabs: BrowserTab[] = [];
 let activeId = 0;
 let nextId = 1;
 let printSourceId = 0;
 let bounds = { x: 0, y: 0, width: 0, height: 0 };
-let bookmarks: Bookmark[] = [];
-let history: Visit[] = [];
+let backend: SkyNavBackend;
 let downloads: AppState['downloads'] = [];
 let searchResults: SearchResult[] = [];
 let searchSummary = '';
@@ -22,17 +22,14 @@ let searchLoading = false;
 let searchError = '';
 let searchRequest = 0;
 let settings: Settings;
-let storeFile: string;
 
 function defaultSettings(): Settings { return { searchEngine: 'https://duckduckgo.com/?q=%s', homePage: HOME, showToolbar: true, showAddress: true, showStatus: true, blockPopups: true, defaultZoom: 1, downloadPath: app.getPath('downloads'), askDownloadPath: true }; }
-function save() { fs.writeFileSync(storeFile, JSON.stringify({ bookmarks, history, settings }, null, 2)); }
 function load() {
-  storeFile = path.join(app.getPath('userData'), 'skynav-data.json');
-  settings = defaultSettings();
-  try { const data = JSON.parse(fs.readFileSync(storeFile, 'utf8')); bookmarks = Array.isArray(data.bookmarks) ? data.bookmarks : []; history = Array.isArray(data.history) ? data.history : []; settings = { ...settings, ...data.settings }; if(settings.searchEngine==='https://www.google.com/search?q=%s')settings.searchEngine='https://duckduckgo.com/?q=%s'; } catch { /* first run */ }
+  backend = new SkyNavBackend(defaultSettings(),()=>{settings=backend.settings;emit();});
+  settings = backend.settings;
 }
 function active() { return tabs.find(tab => tab.info.id === activeId); }
-function state(): AppState { return { tabs: tabs.map(tab => tab.info), activeId, printTarget: tabs.find(tab=>tab.info.id===printSourceId)?.info, bookmarks, history, settings, downloads, searchResults, searchSummary, searchLoading, searchError, isMaximized: win.isMaximized(), isFullScreen: win.isFullScreen() }; }
+function state(): AppState { return { tabs: tabs.map(tab => tab.info), activeId, printTarget: tabs.find(tab=>tab.info.id===printSourceId)?.info, bookmarks:backend.bookmarks, history:backend.history, mail:backend.mail, auth:backend.auth, settings, downloads, searchResults, searchSummary, searchLoading, searchError, isMaximized: win.isMaximized(), isFullScreen: win.isFullScreen() }; }
 function emit() { if (!win.isDestroyed()) win.webContents.send('state', state()); }
 function isInternal(url: string) { try { const parsed = new URL(url); return parsed.protocol === 'skynav:' && internal.has(parsed.hostname); } catch { return false; } }
 function normalize(input: string): string {
@@ -71,9 +68,9 @@ function visibleView(tab?: BrowserTab) {
 }
 function recordVisit(url: string, title: string) {
   if (!/^https?:/.test(url)) return;
-  history.unshift({url,title,visited:new Date().toISOString()});
-  history = history.slice(0,1000); save();
+  void backend.recordVisit(url,title);
 }
+function accountTask(task:Promise<unknown>) {void task.catch(error=>{backend.auth.error=error instanceof Error?error.message:'Account request failed';emit();});}
 function syncWeb(tab: BrowserTab) {
   if (!tab.view || tab.view.webContents.isDestroyed()) return;
   const wc = tab.view.webContents;
@@ -149,11 +146,11 @@ function command(action:string, payload?:any) {
     case 'maximize': win.isMaximized()?win.unmaximize():win.maximize();emit();break;
     case 'close-window': win.close();break;
     case 'edit': edit(String(payload));break;
-    case 'bookmark-add': if(tab && /^https?:/.test(tab.info.url)){bookmarks.unshift({id:crypto.randomUUID(),title:tab.info.title,url:tab.info.url,folder:'Favorites',created:new Date().toISOString()});save();emit();}break;
-    case 'bookmark-remove': bookmarks=bookmarks.filter(b=>b.id!==payload);save();emit();break;
-    case 'bookmark-update': {const b=bookmarks.find(b=>b.id===payload?.id);if(b){b.title=String(payload.title||b.title);b.folder=String(payload.folder||b.folder);save();emit();}}break;
-    case 'history-clear': history=[];save();emit();break;
-    case 'settings': settings={...settings,...payload};save();emit();break;
+    case 'bookmark-add': if(tab && /^https?:/.test(tab.info.url)){if(!backend.auth.userId)navigate('skynav://account');else accountTask(backend.addBookmark(tab.info.title,tab.info.url));}break;
+    case 'bookmark-remove': accountTask(backend.removeBookmark(String(payload||'')));break;
+    case 'bookmark-update': {const b=backend.bookmarks.find(b=>b.id===payload?.id);if(b)accountTask(backend.updateBookmark(b.id,String(payload.title||b.title),String(payload.folder||b.folder)));}break;
+    case 'history-clear': accountTask(backend.clearHistory());break;
+    case 'settings': settings={...settings,...payload};backend.settings=settings;if(backend.auth.userId)accountTask(backend.saveSettings(settings));emit();break;
     case 'cookies-clear': session.fromPartition('persist:browser').clearStorageData({storages:['cookies']});break;
     case 'print': (tabs.find(t=>t.info.id===printSourceId)?.view?.webContents||wc)?.print({silent:false,printBackground:true},()=>{});break;
   }
@@ -168,17 +165,26 @@ app.whenReady().then(()=>{
   browserSession.setPermissionCheckHandler(()=>false);
   browserSession.on('will-download',(_event,item)=>{const entry={name:item.getFilename(),state:'Downloading',received:0,total:item.getTotalBytes()};downloads.unshift(entry);if(!settings.askDownloadPath)item.setSavePath(path.join(settings.downloadPath,item.getFilename()));item.on('updated',()=>{entry.received=item.getReceivedBytes();entry.total=item.getTotalBytes();emit();});item.once('done',(_e,state)=>{entry.state=state;emit();});emit();});
   win=new BrowserWindow({width:1280,height:850,minWidth:800,minHeight:540,frame:false,backgroundColor:'#ece9d8',webPreferences:{preload:path.join(__dirname,'../preload/preload.js'),nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true}});
+  void backend.initialize();
   win.loadFile(path.join(__dirname,'../../src/renderer/index.html'));
   win.webContents.on('will-navigate',(event,url)=>{if(url!==pathToFileURL(path.join(__dirname,'../../src/renderer/index.html')).href)event.preventDefault();});
   win.on('resize',()=>emit());win.on('maximize',emit);win.on('unmaximize',emit);
   win.on('closed',()=>{for(const tab of tabs)tab.view?.webContents.close();});
   shortcuts();
   ipcMain.handle('get-state',event=>{ensureSender(event);return state();});
+  ipcMain.handle('backend-configure',async(event,key:string)=>{ensureSender(event);await backend.configure(String(key));return true;});
+  ipcMain.handle('backend-refresh',async event=>{ensureSender(event);await backend.refresh();return true;});
+  ipcMain.handle('auth-sign-in',async(event,email:string,password:string)=>{ensureSender(event);await backend.signIn(String(email),String(password));return true;});
+  ipcMain.handle('auth-sign-up',async(event,email:string,password:string)=>{ensureSender(event);return backend.signUp(String(email),String(password));});
+  ipcMain.handle('auth-sign-out',async event=>{ensureSender(event);await backend.signOut();return true;});
+  ipcMain.handle('mail-send',async(event,to:string,subject:string,body:string)=>{ensureSender(event);await backend.sendMail(String(to),String(subject),String(body));return true;});
+  ipcMain.handle('mail-read',async(event,id:string)=>{ensureSender(event);await backend.markRead(String(id));return true;});
+  ipcMain.handle('mail-delete',async(event,id:string)=>{ensureSender(event);await backend.deleteMail(String(id));return true;});
   ipcMain.on('command',(event,action,payload)=>{ensureSender(event);command(String(action),payload);});
   ipcMain.on('content-bounds',(event,rect)=>{ensureSender(event);bounds={x:Math.max(0,Math.round(rect.x)),y:Math.max(0,Math.round(rect.y)),width:Math.max(0,Math.round(rect.width)),height:Math.max(0,Math.round(rect.height))};const view=active()?.view;if(view)view.setBounds(bounds);});
   ipcMain.handle('save-pdf',event=>{ensureSender(event);return savePdf();});
-  ipcMain.handle('export-bookmarks',async event=>{ensureSender(event);const result=await dialog.showSaveDialog(win,{defaultPath:'SkyNav Bookmarks.html',filters:[{name:'HTML',extensions:['html']}]});if(result.canceled||!result.filePath)return false;const escape=(s:string)=>s.replaceAll('&','&amp;').replaceAll('"','&quot;').replaceAll('<','&lt;');fs.writeFileSync(result.filePath,`<!DOCTYPE NETSCAPE-Bookmark-file-1><TITLE>SkyNav Bookmarks</TITLE><H1>SkyNav Bookmarks</H1><DL><p>\n${bookmarks.map(b=>`<DT><A HREF="${escape(b.url)}">${escape(b.title)}</A>`).join('\n')}\n</DL>`);return true;});
-  ipcMain.handle('import-bookmarks',async event=>{ensureSender(event);const result=await dialog.showOpenDialog(win,{properties:['openFile'],filters:[{name:'HTML',extensions:['html','htm']}]});if(result.canceled)return false;const html=fs.readFileSync(result.filePaths[0],'utf8');for(const match of html.matchAll(/<A\s+[^>]*HREF="([^"]+)"[^>]*>([^<]*)<\/A>/gi)){if(/^https?:\/\//.test(match[1]))bookmarks.push({id:crypto.randomUUID(),url:match[1].replaceAll('&amp;','&'),title:match[2].replaceAll('&amp;','&'),folder:'Favorites',created:new Date().toISOString()});}save();emit();return true;});
+  ipcMain.handle('export-bookmarks',async event=>{ensureSender(event);const result=await dialog.showSaveDialog(win,{defaultPath:'SkyNav Bookmarks.html',filters:[{name:'HTML',extensions:['html']}]});if(result.canceled||!result.filePath)return false;const escape=(s:string)=>s.replaceAll('&','&amp;').replaceAll('"','&quot;').replaceAll('<','&lt;');fs.writeFileSync(result.filePath,`<!DOCTYPE NETSCAPE-Bookmark-file-1><TITLE>SkyNav Bookmarks</TITLE><H1>SkyNav Bookmarks</H1><DL><p>\n${backend.bookmarks.map(b=>`<DT><A HREF="${escape(b.url)}">${escape(b.title)}</A>`).join('\n')}\n</DL>`);return true;});
+  ipcMain.handle('import-bookmarks',async event=>{ensureSender(event);if(!backend.auth.userId)throw new Error('Sign in first');const result=await dialog.showOpenDialog(win,{properties:['openFile'],filters:[{name:'HTML',extensions:['html','htm']}]});if(result.canceled)return false;const html=fs.readFileSync(result.filePaths[0],'utf8');for(const match of html.matchAll(/<A\s+[^>]*HREF="([^"]+)"[^>]*>([^<]*)<\/A>/gi)){if(/^https?:\/\//.test(match[1]))await backend.addBookmark(match[2].replaceAll('&amp;','&'),match[1].replaceAll('&amp;','&'));}return true;});
   win.webContents.once('did-finish-load',()=>createTab(HOME));
 });
 app.on('window-all-closed',()=>app.quit());
